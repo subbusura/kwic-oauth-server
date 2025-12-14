@@ -1,6 +1,6 @@
 FROM node:24-alpine AS builder
 WORKDIR /app
-COPY package.json tsconfig.json .eslintrc.js .prettierrc ./
+COPY package.json package-lock.json tsconfig.json .eslintrc.js .prettierrc ./
 COPY src ./src
 RUN npm ci && npm run build
 
