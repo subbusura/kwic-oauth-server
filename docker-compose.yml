@@ -1,0 +1,53 @@
+version: '3.9'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      IDP_PRIVATE_KEY_PATH: /run/secrets/idp_private_key
+      IDP_CERTIFICATE_PATH: /run/secrets/idp_certificate
+      JWKS_PRIVATE_KEY_PATH: /run/secrets/jwks_private_key
+      JWKS_PUBLIC_KEY_PATH: /run/secrets/jwks_public_key
+      MONGO_URI_FILE: /run/secrets/mongo_uri
+      REDIS_URL_FILE: /run/secrets/redis_url
+      ADMIN_SECRET_TOKEN_FILE: /run/secrets/admin_secret_token
+      ADMIN_UI_PASSWORD_FILE: /run/secrets/admin_ui_password
+      APP_LAUNCH_SECRET_FILE: /run/secrets/app_launch_secret
+    secrets:
+      - idp_private_key
+      - idp_certificate
+      - jwks_private_key
+      - jwks_public_key
+      - mongo_uri
+      - redis_url
+      - admin_secret_token
+      - admin_ui_password
+      - app_launch_secret
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+secrets:
+  idp_private_key:
+    file: ./secrets/idp_private_key.pem
+  idp_certificate:
+    file: ./secrets/idp_certificate.pem
+  jwks_private_key:
+    file: ./secrets/jwks_private.pem
+  jwks_public_key:
+    file: ./secrets/jwks_public.pem
+  mongo_uri:
+    file: ./secrets/mongo_uri.txt
+  redis_url:
+    file: ./secrets/redis_url.txt
+  admin_secret_token:
+    file: ./secrets/admin_secret_token.txt
+  admin_ui_password:
+    file: ./secrets/admin_ui_password.txt
+  app_launch_secret:
+    file: ./secrets/app_launch_secret.txt
