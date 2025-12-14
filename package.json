@@ -32,7 +32,7 @@
     "morgan": "^1.10.0",
     "nanoid": "^5.0.0",
     "oidc-provider": "^7.0.0",
-    "samlify": "^2.8.9",
+    "samlify": "^2.10.2",
     "uuid": "^9.0.0",
     "winston": "^3.8.2"
   },

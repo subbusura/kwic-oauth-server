@@ -23,31 +23,42 @@ app.use('/static', express.static(path.join(__dirname, '../public')));
 
 // Dynamic CSP middleware that allows form submissions to registered SPs
 app.use(async (req, res, next) => {
-  if (req.path.startsWith('/auth/idp/sso')) {
-    try {
-      const sps = await ServiceProvider.find({}, 'acs_url');
-      const allowedDomains = sps
-        .map((sp) => {
-          try {
-            const url = new URL(sp.acs_url);
-            return url.origin;
-          } catch {
-            return null;
-          }
-        })
-        .filter((d): d is string => d !== null);
+  if (req.path.startsWith('/auth')) {
+    if (req.path.startsWith('/auth/idp/sso')) {
+      try {
+        const sps = await ServiceProvider.find({}, 'acs_url');
+        const allowedDomains = sps
+          .map((sp) => {
+            try {
+              const url = new URL(sp.acs_url);
+              return url.origin;
+            } catch {
+              return null;
+            }
+          })
+          .filter((d): d is string => d !== null);
 
+        helmet({
+          contentSecurityPolicy: {
+            directives: {
+              ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+              'script-src': ["'self'", "'unsafe-inline'"],
+              'form-action': ["'self'", ...allowedDomains]
+            }
+          }
+        })(req, res, next);
+      } catch (err) {
+        next();
+      }
+    } else {
       helmet({
         contentSecurityPolicy: {
           directives: {
             ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-            'script-src': ["'self'", "'sha256-B2nmDrjNPlkSRtgDyZRCrCQXm15N2hOycwNThoe5CJQ='"],
-            'form-action': ["'self'", ...allowedDomains]
+            'script-src': ["'self'", "'unsafe-inline'"]
           }
         }
       })(req, res, next);
-    } catch (err) {
-      next();
     }
   } else {
     helmet()(req, res, next);

@@ -21,7 +21,8 @@ async function buildIdp(reqHost: string) {
   const cert = loadKey(certPath);
   const key = loadKey(keyPath);
   const base = `https://${reqHost}`;
-  return new (IdentityProvider as any)({
+
+  return IdentityProvider({
     entityID: `${base}/auth/idp`,
     signingCert: cert,
     privateKey: key,
@@ -29,45 +30,48 @@ async function buildIdp(reqHost: string) {
     singleSignOnService: [
       {
         Binding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect',
-        Location: `${base}/auth/idp/sso`
+        Location: `${base}/auth/idp/sso`,
       },
       {
         Binding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST',
-        Location: `${base}/auth/idp/sso`
-      }
+        Location: `${base}/auth/idp/sso`,
+      },
     ],
     singleLogoutService: [
       {
         Binding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect',
-        Location: `${base}/auth/idp/slo`
+        Location: `${base}/auth/idp/slo`,
       },
       {
         Binding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST',
-        Location: `${base}/auth/idp/slo`
-      }
+        Location: `${base}/auth/idp/slo`,
+      },
     ],
     nameIDFormat: ['urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress'],
-    messageSigningOrder: 'sign-then-encrypt'
+    messageSigningOrder: 'sign-then-encrypt',
+    loginResponseTemplate: {
+      context: saml.SamlLib.defaultLoginResponseTemplate.context,
+    },
   });
 }
 
 async function buildSp(entityId: string) {
   const sp = await ServiceProviderModel.findOne({ entity_id: entityId });
   if (!sp) throw new Error('sp_not_found');
-  return new (ServiceProvider as any)({
+  return ServiceProvider({
     entityID: sp.entity_id,
     assertionConsumerService: [
       {
         Binding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST',
         Location: sp.acs_url,
-        isDefault: true
-      }
+        isDefault: true,
+      },
     ],
     // Minimal settings to avoid signature/binding errors; no encryption/signature enforced
     wantAssertionsSigned: false,
     wantMessageSigned: false,
     messageSigningOrder: 'encrypt-then-sign',
-    requestSignatureAlgorithm: 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256'
+    requestSignatureAlgorithm: 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256',
   });
 }
 
@@ -83,7 +87,6 @@ export async function issueResponse(options: {
   relayState?: string;
   parsedRequest?: any;
 }) {
-  const idp = await buildIdp(options.host);
   const sp = await buildSp(options.spEntityId);
   const spDoc = await ServiceProviderModel.findOne({ entity_id: options.spEntityId });
   if (!spDoc) {
@@ -94,20 +97,15 @@ export async function issueResponse(options: {
   if (!user) throw new Error('user_not_found');
   const email = user.email || user._id.toString();
 
-  logger.info('User profile data', { 
-    userId: options.userId,
-    hasProfile: !!user.profile,
-    profile: user.profile
-  });
+
 
   const defaultAttrs = {
     email: email,
     name: user.profile?.name || user.profile?.displayName || '',
     givenName: user.profile?.givenName || user.profile?.firstName || '',
     surName: user.profile?.surName || user.profile?.lastName || '',
-    awsRole: user.aws_roles && user.aws_roles.length > 0 ? user.aws_roles.join(',') : ''
   };
-  
+
   // Send both short names and URN format for maximum compatibility
   const attributes: Record<string, any> = {
     email: email,
@@ -117,51 +115,79 @@ export async function issueResponse(options: {
     'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress': email,
     'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name': defaultAttrs.name,
     'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname': defaultAttrs.givenName,
-    'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname': defaultAttrs.surName
+    'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname': defaultAttrs.surName,
   };
-  
+
   // AWS-specific attributes
-  if (options.spEntityId === 'https://signin.aws.amazon.com/saml' && user.aws_roles && user.aws_roles.length > 0) {
+  if (
+    options.spEntityId === 'https://signin.aws.amazon.com/saml' &&
+    user.aws_roles &&
+    user.aws_roles.length > 0
+  ) {
     attributes['https://aws.amazon.com/SAML/Attributes/RoleSessionName'] = email;
     attributes['https://aws.amazon.com/SAML/Attributes/Role'] = user.aws_roles.join(',');
   }
 
-  const attrArray = Object.entries(attributes).map(([name, value]) => ({ name, valueTag: 'nameID', value }));
-  
-  const userData = {
-    email,
-    nameID: email,
-    nameIDFormat: 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress'
+  const idp = await buildIdp(options.host);
+  const idpMeta = idp.entityMeta;
+  const spMeta = sp.entityMeta;
+
+  const createTemplateCallback = (template: string) => {
+    const id = idp.entitySetting.generateID();
+    const assertionId = idp.entitySetting.generateID();
+    const now = new Date().toISOString();
+    const fiveMinutesLater = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+    const base = spDoc.acs_url;
+    const spEntityID = spMeta.getEntityID();
+
+    const attributeStatements = Object.entries(attributes)
+      .map(
+        ([name, value]) =>
+          `<saml:Attribute Name="${name}" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:uri"><saml:AttributeValue xsi:type="xs:string">${value}</saml:AttributeValue></saml:Attribute>`
+      )
+      .join('');
+
+    const tvalue: any = {
+      ID: id,
+      AssertionID: assertionId,
+      Destination: base,
+      Audience: spEntityID,
+      EntityID: spEntityID,
+      SubjectRecipient: base,
+      Issuer: idpMeta.getEntityID(),
+      IssueInstant: now,
+      AssertionConsumerServiceURL: base,
+      StatusCode: 'urn:oasis:names:tc:SAML:2.0:status:Success',
+      ConditionsNotBefore: now,
+      ConditionsNotOnOrAfter: fiveMinutesLater,
+      SubjectConfirmationDataNotOnOrAfter: fiveMinutesLater,
+      NameIDFormat: 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress',
+      NameID: email,
+      InResponseTo: options.parsedRequest?.extract?.request?.id || '',
+      AttributeStatement: `<saml:AttributeStatement>${attributeStatements}</saml:AttributeStatement>`,
+      AuthnStatement: '',
+    };
+
+    let context = template;
+    Object.entries(tvalue).forEach(([key, value]) => {
+      context = context.replace(new RegExp(`\{${key}\}`, 'g'), value);
+    });
+
+    return { id, context };
   };
-  
-  logger.info('SAML userData', { userData, attrArray, defaultAttrs });
 
   const loginResponse = await idp.createLoginResponse(
     sp,
     options.parsedRequest || null,
     'post',
-    userData,
-    undefined,
+    { email, nameID: email, nameIDFormat: 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress' },
+    createTemplateCallback,
     false,
     options.relayState
   );
-  
+
   let context = loginResponse.context || loginResponse;
-  
-  // Manually inject AttributeStatement since samlify doesn't handle it properly
-  if (typeof context === 'string') {
-    let decoded = Buffer.from(context, 'base64').toString();
-    const attrStatementXml = '<saml:AttributeStatement>' + 
-      Object.entries(attributes).map(([name, value]) => 
-        `<saml:Attribute Name="${name}"><saml:AttributeValue>${value}</saml:AttributeValue></saml:Attribute>`
-      ).join('') + 
-      '</saml:AttributeStatement>';
-    
-    decoded = decoded.replace('</saml:AuthnStatement>', `</saml:AuthnStatement>${attrStatementXml}`);
-    context = Buffer.from(decoded).toString('base64');
-    logger.info('Injected AttributeStatement', { attrStatementXml });
-  }
-  
+
   // If context is just base64, wrap it in HTML form
   if (typeof context === 'string' && !context.includes('<form')) {
     const escapedRelayState = options.relayState ? options.relayState.replace(/"/g, '&quot;') : '';
@@ -171,7 +197,9 @@ export async function issueResponse(options: {
 <body>
 <form id="saml-form" method="post" action="${spDoc.acs_url}">
 <input type="hidden" name="SAMLResponse" value="${context}" />
-${options.relayState ? `<input type="hidden" name="RelayState" value="${escapedRelayState}" />` : ''}
+${
+  options.relayState ? `<input type="hidden" name="RelayState" value="${escapedRelayState}" />` : ''
+}
 <noscript><button type="submit">Continue</button></noscript>
 </form>
 <script>document.getElementById('saml-form').submit();</script>
@@ -180,7 +208,7 @@ ${options.relayState ? `<input type="hidden" name="RelayState" value="${escapedR
   }
 
   logger.info('SAML IdP assertion issued', { sp: options.spEntityId, userId: options.userId });
-  
+
   if (spDoc && spDoc.require_consent !== false) {
     await IdpConsent.updateOne(
       { user_id: options.userId, sp_entity_id: options.spEntityId },
@@ -209,9 +237,9 @@ export async function previewResponse(options: {
     email: email,
     name: user.profile?.name || user.profile?.displayName || '',
     givenName: user.profile?.givenName || user.profile?.firstName || '',
-    surName: user.profile?.surName || user.profile?.lastName || ''
+    surName: user.profile?.surName || user.profile?.lastName || '',
   };
-  
+
   const attributes: Record<string, any> = {
     email: email,
     name: defaultAttrs.name,
@@ -220,25 +248,33 @@ export async function previewResponse(options: {
     'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress': email,
     'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name': defaultAttrs.name,
     'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname': defaultAttrs.givenName,
-    'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname': defaultAttrs.surName
+    'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname': defaultAttrs.surName,
   };
 
   const userData = {
     email,
     nameID: email,
-    nameIDFormat: 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress'
+    nameIDFormat: 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress',
   };
-  
-  const loginResponse = await idp.createLoginResponse(sp, null, 'post', userData, undefined, false, options.relayState);
+
+  const loginResponse = await idp.createLoginResponse(
+    sp,
+    null,
+    'post',
+    userData,
+    undefined,
+    false,
+    options.relayState
+  );
   const context = loginResponse.context || loginResponse;
   const samlMatch = context ? context.match(/name="SAMLResponse" value="([^"]+)"/) : null;
   const samlB64 = samlMatch ? samlMatch[1] : '';
   const samlXml = samlB64 ? Buffer.from(samlB64, 'base64').toString() : '';
-  
+
   return {
     saml_response_base64: samlB64,
     saml_response_xml: samlXml,
-    relay_state: options.relayState || ''
+    relay_state: options.relayState || '',
   };
 }
 
@@ -278,7 +314,7 @@ export async function parseAuthnRequest(req: {
   const relayState = (req.query.RelayState as string) || '';
   const issuer = extractIssuerFromRequest(samlReq);
   const requestId = extractRequestIdFromRequest(samlReq);
-  
+
   if (!issuer) throw new Error('invalid_authn_request');
   const sp = await ServiceProviderModel.findOne({ entity_id: issuer });
   if (!sp) throw new Error('sp_not_found');
@@ -289,22 +325,22 @@ export async function parseAuthnRequest(req: {
   let parsedRequest = null;
   try {
     parsedRequest = await idp.parseLoginRequest(spEntity, 'redirect', req);
-    logger.info('SAMLRequest parsed successfully', { 
+    logger.info('SAMLRequest parsed successfully', {
       hasExtract: !!parsedRequest?.extract,
-      requestId: parsedRequest?.extract?.request?.id || requestId
+      requestId: parsedRequest?.extract?.request?.id || requestId,
     });
   } catch (err) {
-    logger.warn('Failed to parse SAMLRequest, using manual extraction', { 
+    logger.warn('Failed to parse SAMLRequest, using manual extraction', {
       err: (err as Error).message,
-      requestId
+      requestId,
     });
     // Fallback: create minimal request object with extracted ID
     if (requestId) {
       parsedRequest = {
         extract: {
           request: { id: requestId },
-          issuer
-        }
+          issuer,
+        },
       };
     }
   }

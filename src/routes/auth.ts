@@ -23,23 +23,39 @@ import logger from '../lib/logger';
 
 const router = express.Router();
 
-const authCsp = helmet({
-  contentSecurityPolicy: {
-    directives: {
-      ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-      'default-src': ["'self'"],
-      'script-src': ["'self'"],
-      'style-src': ["'self'"],
-      'img-src': ["'self'", 'data:', 'https:'],
-      'font-src': ["'self'", 'data:', 'https:'],
-      'connect-src': ["'self'"],
-      'form-action': ["'self'"],
-      'frame-ancestors': ["'none'"]
-    }
+router.use(async (req, res, next) => {
+  try {
+    const subApps = await SubApplication.find({ 'saml.enabled': true }, 'saml.sso_url');
+    const samlDomains = subApps
+      .map((app) => {
+        try {
+          return app.saml?.sso_url ? new URL(app.saml.sso_url).origin : null;
+        } catch {
+          return null;
+        }
+      })
+      .filter((d): d is string => d !== null);
+
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+          'default-src': ["'self'"],
+          'script-src': ["'self'", "'unsafe-inline'"],
+          'style-src': ["'self'", "'unsafe-inline'"],
+          'img-src': ["'self'", 'data:', 'https:'],
+          'font-src': ["'self'", 'data:', 'https:'],
+          'connect-src': ["'self'"],
+          'form-action': ["'self'", 'https://accounts.google.com', ...samlDomains],
+          'frame-ancestors': ["'none'"]
+        }
+      }
+    })(req, res, next);
+  } catch (err) {
+    next();
   }
 });
 
-router.use(authCsp);
 
 const RESET_EXPIRY_MINUTES = 30;
 const RESET_COOLDOWN_MS = 90 * 1000;
