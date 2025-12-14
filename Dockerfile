@@ -11,8 +11,8 @@ RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
-COPY --chown=nodejs:nodejs public ./public
-COPY --chown=nodejs:nodejs views ./views
+COPY --chown=nodejs:nodejs public ./dist/public
+COPY --chown=nodejs:nodejs views ./dist/views
 USER nodejs
 ENV NODE_ENV=production
 EXPOSE 3000
