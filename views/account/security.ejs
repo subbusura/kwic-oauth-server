@@ -1,0 +1,105 @@
+<%- include('./_pageStart', {
+  user,
+  encodedUserId,
+  avatarInitial,
+  displayName,
+  activeTab: 'security',
+  pageTitle: 'Security'
+}) %>
+
+<h1>Security</h1>
+<div class="card">
+  <div class="card-section">
+    <div class="row">
+      <div>
+        <div class="section-title">Email</div>
+        <div><%= user.email %></div>
+      </div>
+      <span class="status-chip <%= user.email_verified ? 'verified' : 'unverified' %>">
+        <%= user.email_verified ? 'Verified' : 'Unverified' %>
+      </span>
+      <% if (!user.email_verified) { %>
+        <form method="post" action="/auth/verify" class="form-inline">
+          <input type="hidden" name="return_to" value="/accounts/<%= encodedUserId %>/security" />
+          <button type="submit" class="btn btn-outline btn-small">Verify email</button>
+        </form>
+      <% } %>
+    </div>
+  </div>
+
+  <div class="card-section">
+    <form method="post" action="/accounts/<%= encodedUserId %>/secondary-email" class="stack">
+      <div>
+        <label for="secondaryEmail">Secondary email</label>
+        <input
+          id="secondaryEmail"
+          name="secondary_email"
+          type="email"
+          value="<%= user.secondary_email || '' %>"
+          placeholder="optional"
+          autocomplete="email"
+        />
+        <div class="muted hint">Used for recovery and alerts.</div>
+      </div>
+      <button class="btn" type="submit">Update secondary email</button>
+    </form>
+  </div>
+
+  <div class="card-section">
+    <div class="muted">
+      <% if (showSetPassword) { %>
+        You signed in with an external provider. Set a password to log in without SSO.
+      <% } else { %>
+        Change your password. First confirm your current password.
+      <% } %>
+    </div>
+    <% if (!showSetPassword) { %>
+      <% if (passwordChangeError) { %>
+        <div class="alert error"><%= passwordChangeError %></div>
+      <% } %>
+      <% if (passwordChangeToken) { %>
+        <form method="post" action="/accounts/<%= encodedUserId %>/password" class="stack">
+          <input type="hidden" name="password_token" value="<%= passwordChangeToken %>" />
+          <div>
+            <label for="password">New password</label>
+            <input id="password" name="password" type="password" required autocomplete="new-password" />
+          </div>
+          <button class="btn" type="submit">Update password</button>
+        </form>
+      <% } else { %>
+        <form method="post" action="/accounts/<%= encodedUserId %>/password-init" class="stack">
+          <div>
+            <label for="currentPassword">Current password</label>
+            <input
+              id="currentPassword"
+              name="current_password"
+              type="password"
+              required
+              autocomplete="current-password"
+            />
+          </div>
+          <button class="btn" type="submit">Continue</button>
+        </form>
+      <% } %>
+    <% } else { %>
+      <form method="post" action="/accounts/<%= encodedUserId %>/password" class="stack">
+        <div>
+          <label for="password">Set password</label>
+          <input id="password" name="password" type="password" required autocomplete="new-password" />
+        </div>
+        <button class="btn" type="submit">Set password</button>
+      </form>
+    <% } %>
+  </div>
+
+  <div class="card-section">
+    <div class="section-title">Two-step authentication</div>
+    <div class="muted">Not implemented yet. Use your IdP/SSO settings.</div>
+  </div>
+  <div class="card-section">
+    <div class="section-title">Devices</div>
+    <div class="muted">You're currently logged in. Device tracking can be wired to audit logs.</div>
+  </div>
+</div>
+
+<%- include('./_pageEnd') %>

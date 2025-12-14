@@ -1,0 +1,10 @@
+<%- include('./_pageStart', { pageTitle: 'Client Created' }) %>
+  <div class="admin-shell centered">
+    <div class="card narrow">
+      <h2>Client created</h2>
+      <p><strong>Client ID:</strong> <%= client.client_id %></p>
+      <p><strong>Client Secret (copy now):</strong> <%= client.client_secret %></p>
+      <a class="btn primary" href="/admin-ui">Back to Admin</a>
+    </div>
+  </div>
+<%- include('./_pageEnd') %>

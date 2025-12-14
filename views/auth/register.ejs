@@ -1,0 +1,25 @@
+<%- include('./_pageStart', { pageTitle: 'Register' }) %>
+  <div class="logo">ATLAS</div>
+  <h2>Create your account</h2>
+  <form class="stack" method="post" action="/auth/register">
+    <input type="hidden" name="return_to" value="<%= returnTo %>" />
+    <% if (subAppId) { %>
+      <input type="hidden" name="sub_app_id" value="<%= subAppId %>" />
+    <% } %>
+    <label for="email">Email *</label>
+    <input id="email" name="email" type="email" required autocomplete="email" />
+    <label for="password">Password *</label>
+    <input id="password" name="password" type="password" required autocomplete="new-password" />
+    <label for="name">Full Name</label>
+    <input id="name" name="name" type="text" autocomplete="name" />
+    <label for="firstName">First Name</label>
+    <input id="firstName" name="firstName" type="text" autocomplete="given-name" />
+    <label for="lastName">Last Name</label>
+    <input id="lastName" name="lastName" type="text" autocomplete="family-name" />
+    <button type="submit" class="btn btn-primary">Create Account</button>
+  </form>
+  <div class="meta">
+    Have an account?
+    <a href="<%= loginLink %>">Login</a>
+  </div>
+<%- include('./_pageEnd') %>

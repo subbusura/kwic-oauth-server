@@ -1,0 +1,20 @@
+<%- include('./_pageStart', { pageTitle: 'SAML Consent' }) %>
+  <h3>Allow access</h3>
+  <p><strong><%= sp.name %></strong> requests these attributes:</p>
+  <ul class="scopes">
+    <% if ((attrs || []).length === 0) { %>
+      <li>email</li>
+    <% } else { %>
+      <% attrs.forEach(function(attr) { %>
+        <li><%= attr.name || '' %> (<%= attr.source || attr.name || '' %>)</li>
+      <% }) %>
+    <% } %>
+  </ul>
+  <form method="post" action="/auth/idp/consent" class="stack">
+    <input type="hidden" name="sp_entity_id" value="<%= spEntityId %>" />
+    <input type="hidden" name="relay_state" value="<%= relayState %>" />
+    <input type="hidden" name="return_to" value="<%= returnTo %>" />
+    <button class="btn btn-primary" type="submit">Allow</button>
+  </form>
+  <div class="meta"><a href="<%= returnTo || '/' %>">Cancel</a></div>
+<%- include('./_pageEnd') %>

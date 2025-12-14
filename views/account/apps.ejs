@@ -1,0 +1,88 @@
+<%- include('./_pageStart', {
+  user,
+  encodedUserId,
+  avatarInitial,
+  displayName,
+  activeTab: 'apps',
+  pageTitle: 'Apps'
+}) %>
+
+<h1>Apps</h1>
+<div class="card">
+  <div class="card-section">
+    <div class="section-title">Applications linked to your account</div>
+    <% if ((!registeredApps || registeredApps.length === 0) && (!missingAppIds || missingAppIds.length === 0)) { %>
+      <div class="muted">No applications linked.</div>
+    <% } else { %>
+      <ul class="app-list">
+        <% registeredApps.forEach(function(app) { %>
+          <li class="app-item">
+            <div>
+              <div><strong><%= app.name || 'Unnamed app' %></strong></div>
+              <div class="muted text-sm"><%= app._id %></div>
+            </div>
+            <form method="post" action="/accounts/<%= encodedUserId %>/apps/launch" class="form-inline">
+              <input type="hidden" name="app_id" value="<%= app._id %>" />
+              <button type="submit" class="btn btn-outline btn-small">Launch</button>
+            </form>
+            <form method="post" action="/accounts/<%= encodedUserId %>/apps/remove" class="form-inline">
+              <input type="hidden" name="app_id" value="<%= app._id %>" />
+              <button type="submit" class="btn btn-outline btn-small">Remove</button>
+            </form>
+          </li>
+        <% }) %>
+        <% (missingAppIds || []).forEach(function(id) { %>
+          <li class="app-item">
+            <div>
+              <div><strong>Unknown app</strong></div>
+              <div class="muted text-sm"><%= id %></div>
+            </div>
+            <form method="post" action="/accounts/<%= encodedUserId %>/apps/remove" class="form-inline">
+              <input type="hidden" name="app_id" value="<%= id %>" />
+              <button type="submit" class="btn btn-outline btn-small">Remove</button>
+            </form>
+          </li>
+        <% }) %>
+      </ul>
+    <% } %>
+  </div>
+</div>
+
+<div class="card card-spaced">
+  <div class="card-section">
+    <div class="section-title">Available applications</div>
+    <% if (!allApps || allApps.length === 0) { %>
+      <div class="muted">No applications available.</div>
+    <% } else { %>
+      <ul class="app-list">
+        <% allApps.forEach(function(app) { %>
+          <li class="app-item">
+            <div>
+              <div><strong><%= app.name || 'Unnamed app' %></strong></div>
+              <div class="muted text-sm"><%= app._id %></div>
+              <div class="muted text-sm">Origins: <%= (app.origins || []).join(', ') %></div>
+              <% if (app.launch_url) { %>
+                <div class="muted text-sm">Launch URL: <%= app.launch_url %></div>
+              <% } else if (app.launch_path) { %>
+                <div class="muted text-sm">Launch Path: <%= app.launch_path %></div>
+              <% } %>
+            </div>
+            <% if (registeredIds.has(String(app._id))) { %>
+              <form method="post" action="/accounts/<%= encodedUserId %>/apps/launch" class="form-inline">
+                <input type="hidden" name="app_id" value="<%= app._id %>" />
+                <button type="submit" class="btn btn-outline btn-small">Launch</button>
+              </form>
+            <% } else { %>
+              <form method="post" action="/accounts/<%= encodedUserId %>/apps/add" class="form-inline">
+                <input type="hidden" name="app_id" value="<%= app._id %>" />
+                <button type="submit" class="btn btn-outline btn-small">Register</button>
+              </form>
+            <% } %>
+          </li>
+        <% }) %>
+      </ul>
+    <% } %>
+  </div>
+</div>
+
+<%- include('./_pageEnd') %>

@@ -1,0 +1,160 @@
+<%- include('./_pageStart', { pageTitle: 'Admin Console' }) %>
+  <div class="admin-shell">
+    <header class="header">
+      <h1>Admin Console</h1>
+      <div class="muted">Manage apps, clients, SAML SPs</div>
+    </header>
+
+    <div class="grid">
+      <section class="card">
+        <h3>Applications</h3>
+        <div class="list">
+          <% if ((apps || []).length === 0) { %>
+            <div class="muted">No applications yet</div>
+          <% } else { %>
+            <% apps.forEach(function(app) { %>
+              <div class="item">
+                <strong><%= app.name || '' %></strong>
+                <div class="badge"><%= app._id %></div>
+                <form class="inline" method="post" action="/admin-ui/applications/<%= app._id %>/delete">
+                  <button class="btn ghost" type="submit">Delete</button>
+                </form>
+              </div>
+            <% }) %>
+          <% } %>
+        </div>
+        <form class="stack" method="post" action="/admin-ui/applications">
+          <label for="app-name">Name</label><input id="app-name" name="name" required />
+          <label for="app-description">Description</label><textarea id="app-description" name="description"></textarea>
+          <label for="app-origins">Origins (comma separated)</label><input id="app-origins" name="origins" />
+          <button class="btn primary" type="submit">Create</button>
+        </form>
+        <hr />
+        <form class="stack" method="post" action="/admin-ui/applications/update">
+          <label for="app-id-update">Application ID</label><input id="app-id-update" name="id" required />
+          <label>Name</label><input name="name" />
+          <label>Description</label><textarea name="description"></textarea>
+          <label>Origins (comma separated)</label><input name="origins" />
+          <button class="btn primary" type="submit">Update</button>
+        </form>
+      </section>
+
+      <section class="card">
+        <h3>Sub-Applications</h3>
+        <div class="list">
+          <% if ((subs || []).length === 0) { %>
+            <div class="muted">No sub-apps yet</div>
+          <% } else { %>
+            <% subs.forEach(function(sub) { %>
+              <div class="item">
+                <strong><%= sub.name || '' %></strong>
+                <div class="badge"><%= sub._id %></div>
+                <div class="muted">App <%= sub.application_id %> · SAML: <%= sub.saml && sub.saml.enabled ? 'enabled' : 'disabled' %></div>
+                <form class="inline" method="post" action="/admin-ui/sub-applications/<%= sub._id %>/delete">
+                  <button class="btn ghost" type="submit">Delete</button>
+                </form>
+              </div>
+            <% }) %>
+          <% } %>
+        </div>
+        <form class="stack" method="post" action="/admin-ui/sub-applications">
+          <label>Application ID</label><input name="application_id" required />
+          <label>Name</label><input name="name" required />
+          <label>Redirect URIs (comma separated)</label><input name="redirect_uris" />
+          <label><input type="checkbox" name="allow_registration" value="true" checked /> Allow Registration</label>
+          <label><input type="checkbox" name="allow_password_login" value="true" checked /> Allow Password Login</label>
+          <label>Enabled Providers (comma separated, e.g., saml)</label><input name="enabled_providers" />
+          <button class="btn primary" type="submit">Create</button>
+        </form>
+        <hr />
+        <form class="stack" method="post" action="/admin-ui/sub-applications/update">
+          <label>Sub-App ID</label><input name="id" required />
+          <label>Name</label><input name="name" />
+          <label>Redirect URIs (comma separated)</label><input name="redirect_uris" />
+          <label><input type="checkbox" name="allow_registration" value="true" /> Allow Registration</label>
+          <label><input type="checkbox" name="allow_password_login" value="true" /> Allow Password Login</label>
+          <label>Enabled Providers (comma separated)</label><input name="enabled_providers" />
+          <div class="section-title">SAML (per sub-app)</div>
+          <div class="muted">Optional if SAML is off.</div>
+          <label><input type="checkbox" name="saml_enabled" value="true" /> Enable SAML</label>
+          <label>IdP Entity ID / Issuer</label><input name="saml_idp_entity_id" />
+          <label>SSO URL</label><input name="saml_sso_url" />
+          <label>Signing Certificate (PEM)</label><textarea name="saml_certificate" rows="3"></textarea>
+          <label><input type="checkbox" name="saml_sign_request" value="true" /> Sign Authn Requests</label>
+          <label>Email Attribute</label><input name="saml_email_attribute" placeholder="email" />
+          <button class="btn primary" type="submit">Update</button>
+        </form>
+      </section>
+
+      <section class="card">
+        <h3>Clients</h3>
+        <div class="list">
+          <% if ((clients || []).length === 0) { %>
+            <div class="muted">No clients yet</div>
+          <% } else { %>
+            <% clients.forEach(function(client) { %>
+              <div class="item">
+                <strong><%= client.client_id || '' %></strong>
+                <span class="badge"><%= client.client_type %></span>
+                <div class="muted">SubApp <%= client.sub_application_id %></div>
+                <form class="inline" method="post" action="/admin-ui/clients/<%= client._id %>/delete">
+                  <button class="btn ghost" type="submit">Delete</button>
+                </form>
+              </div>
+            <% }) %>
+          <% } %>
+        </div>
+        <form class="stack" method="post" action="/admin-ui/clients">
+          <label>Sub-Application ID</label><input name="sub_application_id" required />
+          <label>Client ID</label><input name="client_id" required />
+          <label>Grant Types (comma separated)</label><input name="grant_types" value="authorization_code,refresh_token" />
+          <label>Redirect URIs (comma separated)</label><input name="redirect_uris" />
+          <label>Scopes (comma separated)</label><input name="scopes" value="read,write" />
+          <label>Client Type</label><input name="client_type" value="confidential" />
+          <button class="btn primary" type="submit">Create</button>
+        </form>
+        <hr />
+        <form class="stack" method="post" action="/admin-ui/clients/update">
+          <label>Client DB ID</label><input name="id" required />
+          <label>Grant Types</label><input name="grant_types" />
+          <label>Redirect URIs</label><input name="redirect_uris" />
+          <label>Scopes</label><input name="scopes" />
+          <label>Status</label><input name="status" />
+          <button class="btn primary" type="submit">Update</button>
+        </form>
+      </section>
+
+      <section class="card">
+        <h3>Service Providers (IdP mode)</h3>
+        <div class="list">
+          <% if ((serviceProviders || []).length === 0) { %>
+            <div class="muted">No service providers yet</div>
+          <% } else { %>
+            <% serviceProviders.forEach(function(sp) { %>
+              <div class="item">
+                <strong><%= sp.name || '' %></strong>
+                <div class="badge"><%= sp.entity_id %></div>
+                <div class="muted">ACS: <%= sp.acs_url || '' %></div>
+                <form class="inline" method="post" action="/admin-ui/service-providers/<%= sp._id %>/delete">
+                  <button class="btn ghost" type="submit">Delete</button>
+                </form>
+              </div>
+            <% }) %>
+          <% } %>
+        </div>
+        <form class="stack" method="post" action="/admin-ui/service-providers">
+          <label>Name</label><input name="name" required />
+          <label>Entity ID</label><input name="entity_id" />
+          <label>ACS URL</label><input name="acs_url" />
+          <label>Signing Certificate (optional, PEM)</label><textarea name="certificate" rows="3"></textarea>
+          <label>Metadata XML (optional; will auto-fill Entity ID, ACS, cert)</label><textarea name="metadata_xml" rows="4"></textarea>
+          <label>Attributes (name=source, comma separated, e.g., email=email,name=name)</label><input name="attributes" />
+          <label><input type="checkbox" name="sign_assertion" value="true" checked /> Sign Assertion</label>
+          <label><input type="checkbox" name="sign_response" value="true" checked /> Sign Response</label>
+          <label><input type="checkbox" name="require_consent" value="true" checked /> Require Consent</label>
+          <button class="btn primary" type="submit">Create SP</button>
+        </form>
+      </section>
+    </div>
+  </div>
+<%- include('./_pageEnd') %>

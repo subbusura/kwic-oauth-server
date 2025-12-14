@@ -1,0 +1,25 @@
+<%- include('./_pageStart', { pageTitle: 'Consent' }) %>
+  <div class="logo">ATLAS</div>
+  <h2>Allow access?</h2>
+  <div class="app-name">"<%= clientId || 'Unknown App' %>" requests permission</div>
+  <div class="muted">Requested scopes:</div>
+  <ul class="scopes">
+    <% if (scopesList.length === 0) { %>
+      <li>none</li>
+    <% } else { %>
+      <% scopesList.forEach(function(scopeItem) { %>
+        <li><%= scopeItem %></li>
+      <% }) %>
+    <% } %>
+  </ul>
+  <form method="post" action="/auth/consent" class="stack">
+    <input type="hidden" name="return_to" value="<%= returnTo %>" />
+    <input type="hidden" name="client_id" value="<%= clientId %>" />
+    <input type="hidden" name="scope" value="<%= scope %>" />
+    <button type="submit" class="btn btn-primary">Allow</button>
+  </form>
+  <form method="get" action="<%= returnTo %>" class="stack">
+    <button type="submit" class="btn btn-secondary">Cancel</button>
+  </form>
+  <div class="meta small">You can revoke access later from the security settings.</div>
+<%- include('./_pageEnd') %>

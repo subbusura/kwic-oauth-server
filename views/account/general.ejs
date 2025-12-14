@@ -1,0 +1,257 @@
+<%- include('./_pageStart', {
+  user,
+  encodedUserId,
+  avatarInitial,
+  displayName,
+  activeTab: 'general',
+  pageTitle: 'General'
+}) %>
+
+<h1>General</h1>
+<div class="card">
+  <div class="card-section profile-header">
+    <div class="avatar avatar-large" aria-hidden="true">
+      <% if (user.profile_photo_url) { %>
+        <img class="avatar-photo" src="<%= user.profile_photo_url %>" alt="Profile photo" />
+      <% } else { %>
+        <span><%= avatarInitial %></span>
+      <% } %>
+    </div>
+    <form id="profileForm" class="flex-1 stack" method="post" action="/accounts/<%= encodedUserId %>/general">
+      <div class="field-row">
+        <div class="half">
+          <label for="firstName">First name</label>
+          <input
+            id="firstName"
+            name="firstName"
+            value="<%= (user.profile && user.profile.givenName) || '' %>"
+            autocomplete="given-name"
+          />
+        </div>
+        <div class="half">
+          <label for="lastName">Last name</label>
+          <input
+            id="lastName"
+            name="lastName"
+            value="<%= (user.profile && user.profile.surName) || '' %>"
+            autocomplete="family-name"
+          />
+        </div>
+      </div>
+      <div class="muted hint">Use your first and last name as they appear on your ID.</div>
+      <div class="field-row">
+        <div class="half">
+          <label for="preferredLanguage">Preferred language</label>
+          <select id="preferredLanguage" name="preferred_language">
+            <option value="">Select language</option>
+            <% languages.forEach(function (lang) { %>
+              <option value="<%= lang.code %>" <%= (user.preferred_language === lang.code) ? 'selected' : '' %>>
+                <%= lang.label %>
+              </option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="half">
+          <label for="timezone">Timezone</label>
+          <select id="timezone" name="preferred_timezone">
+            <option value="">Select timezone</option>
+            <% timezones.forEach(function (tz) { %>
+              <option value="<%= tz.id %>" <%= (user.preferred_timezone || user.timezone) === tz.id ? 'selected' : '' %>>
+                <%= tz.label %>
+              </option>
+            <% }) %>
+          </select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="half">
+          <label for="profilePhotoUrl">Profile photo URL</label>
+          <input
+            id="profilePhotoUrl"
+            name="profile_photo_url"
+            value="<%= user.profile_photo_url || '' %>"
+            placeholder="https://.../avatar.png"
+          />
+        </div>
+      </div>
+
+      <div class="card nested-card">
+        <div class="card-section">
+          <div class="row">
+            <div>
+              <div class="section-title">Email</div>
+              <div><%= user.email %></div>
+            </div>
+            <span class="status-chip <%= user.email_verified ? 'verified' : 'unverified' %>">
+              <%= user.email_verified ? 'Verified' : 'Unverified' %>
+            </span>
+          </div>
+        </div>
+        <div class="card-section">
+          <div class="row">
+            <div>
+            <div class="section-title">Phone (optional)</div>
+            <div><%= phoneSummary || 'No phone number' %></div>
+          </div>
+          <div class="muted">Add/update below</div>
+        </div>
+      </div>
+      <% if ((registeredApps && registeredApps.length) || (missingAppIds && missingAppIds.length)) { %>
+          <div class="card-section">
+            <div class="section-title">Registered applications</div>
+            <ul class="muted">
+              <% registeredApps.forEach(function(app) { %>
+                <li><%= app.name || app._id %></li>
+              <% }) %>
+              <% (missingAppIds || []).forEach(function(id) { %>
+                <li><%= id %> (not found)</li>
+              <% }) %>
+            </ul>
+          </div>
+      <% } %>
+    </div>
+
+    <div class="stack" id="phone-list">
+        <% phones.forEach(function (phone) { %>
+          <div class="phone-row inline-phone">
+            <input type="hidden" name="phone_country_code[]" value="<%= phone.country_code || '' %>" />
+            <input type="hidden" name="phone_number[]" value="<%= phone.number || '' %>" />
+            <input type="hidden" name="phone_label[]" value="<%= phone.label || '' %>" />
+
+            <div class="view-fields">
+              <div class="phone-field">
+                <label>Phone</label>
+                <div class="phone-display">
+                  <%= (phone.country_code || '') %> <%= phone.number || '' %> <%= phone.label ? '(' + phone.label + ')' : '' %>
+                </div>
+              </div>
+              <div class="phone-actions">
+                <button type="button" class="btn btn-outline btn-small phone-edit">Edit</button>
+                <button type="button" class="btn btn-outline btn-small phone-remove">Remove</button>
+              </div>
+            </div>
+
+            <div class="edit-fields">
+              <div class="phone-field">
+                <label>Country code</label>
+                <select class="phone-code">
+                  <option value="">Code</option>
+                  <% countryCodes.forEach(function(cc) { %>
+                    <option value="<%= cc.code %>" <%= (phone.country_code === cc.code) ? 'selected' : '' %>>
+                      <%= cc.label %>
+                    </option>
+                  <% }) %>
+                </select>
+              </div>
+              <div class="phone-field flex-1">
+                <label>Phone number</label>
+                <input
+                  class="phone-number"
+                  value="<%= phone.number || '' %>"
+                  placeholder="5551234567"
+                  autocomplete="tel-national"
+                />
+              </div>
+              <div class="phone-field">
+                <label>Label</label>
+                <input
+                  class="phone-label"
+                  value="<%= phone.label || '' %>"
+                  placeholder="Label"
+                />
+              </div>
+              <div class="phone-actions">
+                <button type="button" class="btn btn-outline btn-small phone-done">Done</button>
+                <button type="button" class="btn btn-outline btn-small phone-remove">Remove</button>
+              </div>
+            </div>
+          </div>
+        <% }) %>
+        <div class="phone-row inline-phone new-phone">
+          <input type="hidden" name="phone_country_code[]" value="" />
+          <input type="hidden" name="phone_number[]" value="" />
+          <input type="hidden" name="phone_label[]" value="" />
+          <div class="edit-fields edit-flex">
+            <div class="phone-field">
+              <label>Country code</label>
+              <select class="phone-code">
+                <option value="">Code</option>
+                <% countryCodes.forEach(function(cc) { %>
+                  <option value="<%= cc.code %>"><%= cc.label %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="phone-field flex-1">
+              <label>Phone number</label>
+              <input
+                class="phone-number"
+                placeholder="5551234567"
+                autocomplete="tel-national"
+              />
+            </div>
+            <div class="phone-field">
+              <label>Label</label>
+              <input class="phone-label" placeholder="Label" />
+            </div>
+            <div class="phone-actions">
+              <button type="button" class="btn btn-outline btn-small phone-done">Done</button>
+              <button type="button" class="btn btn-outline btn-small phone-remove">Remove</button>
+            </div>
+          </div>
+        </div>
+        <button type="button" class="btn btn-outline btn-small add-phone">Add phone</button>
+      </div>
+
+      <div class="actions">
+        <button class="btn" type="submit">Save</button>
+        <a class="btn btn-outline" href="/accounts/<%= encodedUserId %>/security">Security</a>
+      </div>
+    </form>
+  </div>
+  <div class="card-section">
+    <div class="section-title">Login service</div>
+    <div class="row">
+      <div class="muted">Connected via <%= user.auth_provider || 'local' %></div>
+      <div class="muted"><%= user.email %></div>
+    </div>
+  </div>
+</div>
+
+<template id="phone-template">
+  <div class="phone-row inline-phone">
+    <input type="hidden" name="phone_country_code[]" value="" />
+    <input type="hidden" name="phone_number[]" value="" />
+    <input type="hidden" name="phone_label[]" value="" />
+    <div class="edit-fields edit-flex">
+      <div class="phone-field">
+        <label>Country code</label>
+        <select class="phone-code">
+          <option value="">Code</option>
+          <% countryCodes.forEach(function(cc) { %>
+            <option value="<%= cc.code %>"><%= cc.label %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="phone-field flex-1">
+        <label>Phone number</label>
+        <input
+          class="phone-number"
+          placeholder="5551234567"
+          autocomplete="tel-national"
+        />
+      </div>
+      <div class="phone-field">
+        <label>Label</label>
+        <input class="phone-label" placeholder="Label" />
+      </div>
+      <div class="phone-actions">
+        <button type="button" class="btn btn-outline btn-small phone-done">Done</button>
+        <button type="button" class="btn btn-outline btn-small phone-remove">Remove</button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script src="/static/js/account.js"></script>
+
+<%- include('./_pageEnd') %>
