@@ -2,7 +2,8 @@ FROM node:22-alpine3.20 AS builder
 WORKDIR /app
 COPY package.json package-lock.json* tsconfig.json .eslintrc.js .prettierrc ./
 COPY src ./src
-RUN npm ci && npm run build
+RUN npm install --production=false
+RUN npm run build
 
 FROM node:22-alpine3.20
 WORKDIR /app
@@ -15,4 +16,4 @@ COPY --chown=nodejs:nodejs views ./views
 USER nodejs
 ENV NODE_ENV=production
 EXPOSE 3000
-CMD ["node", "dist/server.js"]
+CMD ["node", "dist/src/server.js"]
