@@ -67,10 +67,8 @@ async function buildSp(entityId: string) {
         isDefault: true,
       },
     ],
-    // Minimal settings to avoid signature/binding errors; no encryption/signature enforced
     wantAssertionsSigned: false,
     wantMessageSigned: false,
-    messageSigningOrder: 'encrypt-then-sign',
     requestSignatureAlgorithm: 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256',
   });
 }
@@ -96,8 +94,6 @@ export async function issueResponse(options: {
   const user = await User.findById(options.userId);
   if (!user) throw new Error('user_not_found');
   const email = user.email || user._id.toString();
-
-
 
   const defaultAttrs = {
     email: email,
@@ -133,8 +129,8 @@ export async function issueResponse(options: {
   const spMeta = sp.entityMeta;
 
   const createTemplateCallback = (template: string) => {
-    const id = idp.entitySetting.generateID();
-    const assertionId = idp.entitySetting.generateID();
+    const id = idp.entitySetting.generateID?.() || `_${Date.now()}`;
+    const assertionId = idp.entitySetting.generateID?.() || `_${Date.now()}_assertion`;
     const now = new Date().toISOString();
     const fiveMinutesLater = new Date(Date.now() + 5 * 60 * 1000).toISOString();
     const base = spDoc.acs_url;
@@ -170,7 +166,7 @@ export async function issueResponse(options: {
 
     let context = template;
     Object.entries(tvalue).forEach(([key, value]) => {
-      context = context.replace(new RegExp(`\{${key}\}`, 'g'), value);
+      context = context.replace(new RegExp(`\{${key}\}`, 'g'), String(value));
     });
 
     return { id, context };
@@ -180,7 +176,11 @@ export async function issueResponse(options: {
     sp,
     options.parsedRequest || null,
     'post',
-    { email, nameID: email, nameIDFormat: 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress' },
+    {
+      email,
+      nameID: email,
+      nameIDFormat: 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress',
+    },
     createTemplateCallback,
     false,
     options.relayState
@@ -259,7 +259,7 @@ export async function previewResponse(options: {
 
   const loginResponse = await idp.createLoginResponse(
     sp,
-    null,
+    {} as any,
     'post',
     userData,
     undefined,
