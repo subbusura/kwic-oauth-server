@@ -4,7 +4,7 @@
   --text: #172b4d;
   --muted: #6b778c;
   --border: #dfe4ed;
-  --accent: #0052cc;
+  --accent: #4AC959;
   --shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
 }
 
@@ -81,8 +81,8 @@ body {
 .badge {
   display: inline-block;
   padding: 2px 8px;
-  background: #e9f2ff;
-  color: #0747a6;
+  background: #e8f5e9;
+  color: #3ab048;
   border-radius: 6px;
   font-size: 12px;
 }
@@ -129,7 +129,7 @@ textarea:focus {
 .btn.primary {
   background: var(--accent);
   color: #fff;
-  box-shadow: 0 8px 18px rgba(0, 82, 204, 0.2);
+  box-shadow: 0 8px 18px rgba(74, 201, 89, 0.2);
 }
 
 .btn.ghost {

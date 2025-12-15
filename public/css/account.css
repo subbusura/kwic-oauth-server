@@ -4,7 +4,7 @@
   --border: #e6e9ef;
   --text: #0b1f33;
   --muted: #5f6b7a;
-  --accent: #0e9a46;
+  --accent: #4AC959;
   --shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
 }
 
@@ -192,7 +192,7 @@ select:focus {
 }
 
 .btn:hover {
-  background: #0c7f3a;
+  background: #3ab048;
 }
 
 .btn-outline {
